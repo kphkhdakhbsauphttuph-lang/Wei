@@ -1,0 +1,646 @@
+-- ========================================================
+-- แพนแพน Hub (Panda Theme Edition - Driving & Games)
+-- Key System + Choice Quiz + Relax + RPS Mini Game + Vehicle System
+-- ========================================================
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local Lighting = game:GetService("Lighting")
+local SoundService = game:GetService("SoundService")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- Global Settings
+local Settings = {
+    CorrectKey = "PANPAN2026",
+    MusicID = "rbxassetid://1838809724",
+
+    SilentAim = false,
+    HitboxHead = false,
+    HitboxSize = 10,
+    OriginalHeadSize = Vector3.new(2, 1, 1),
+
+    SpeedBoost = false,
+    FastSpeed = 50,
+    NormalSpeed = 16,
+    
+    ESP = false,
+    ESPColor = Color3.fromRGB(255, 255, 255),
+
+    Noclip = false,
+    FlingPush = false,
+
+    -- Relax System Settings
+    RelaxMusic = false,
+    NightMode = false,
+    AmbientFog = false,
+    RelaxSit = false,
+
+    -- RPS Mini Game Scores
+    PlayerScore = 0,
+    AIScore = 0,
+
+    -- Vehicle System Storage
+    CurrentVehicle = nil
+}
+
+local PanPanImageId = "rbxassetid://YOUR_IMAGE_ID_HERE" 
+
+local DefaultLighting = {
+    TimeOfDay = Lighting.TimeOfDay,
+    FogEnd = Lighting.FogEnd,
+    FogColor = Lighting.FogColor,
+    GlobalShadows = Lighting.GlobalShadows,
+    ClockTime = Lighting.ClockTime
+}
+
+-- ========================================================
+-- 1. MUSIC & RELAX SOUND SYSTEM
+-- ========================================================
+
+local KeyMusic = Instance.new("Sound")
+KeyMusic.Name = "KeyScreenMusic"
+KeyMusic.SoundId = Settings.MusicID
+KeyMusic.Volume = 0.8
+KeyMusic.Looped = true
+KeyMusic.Parent = SoundService
+
+local ChillMusic = Instance.new("Sound")
+ChillMusic.Name = "ChillRelaxMusic"
+ChillMusic.SoundId = "rbxassetid://9043887091"
+ChillMusic.Volume = 0.5
+ChillMusic.Looped = true
+ChillMusic.Parent = SoundService
+
+task.spawn(function()
+    if not KeyMusic.IsLoaded then
+        KeyMusic.Loaded:Wait()
+    end
+    KeyMusic:Play()
+end)
+
+-- ========================================================
+-- 2. UI CREATION (ScreenGui)
+-- ========================================================
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "PanPanPandaHubGui"
+ScreenGui.ResetOnSpawn = false
+
+if syn and syn.protect_gui then
+    syn.protect_gui(ScreenGui)
+    ScreenGui.Parent = CoreGui
+else
+    local function ParentGui()
+        local playerGui = LocalPlayer:WaitForChild("PlayerGui", 5)
+        if playerGui then ScreenGui.Parent = playerGui end
+    end
+    ParentGui()
+    LocalPlayer.CharacterAdded:Connect(function()
+        task.wait(0.5)
+        ParentGui()
+    end)
+end
+
+-- ========================================================
+-- 3. KEY SYSTEM UI + CHOICE QUIZ FRAME
+-- ========================================================
+
+local KeyFrame = Instance.new("Frame")
+KeyFrame.Name = "KeyFrame"
+KeyFrame.Size = UDim2.new(0, 300, 0, 220)
+KeyFrame.Position = UDim2.new(0.5, -150, 0.5, -110)
+KeyFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+KeyFrame.Active = true
+KeyFrame.Draggable = true
+KeyFrame.Parent = ScreenGui
+
+local UICornerKey = Instance.new("UICorner")
+UICornerKey.CornerRadius = UDim.new(0, 16)
+UICornerKey.Parent = KeyFrame
+
+local UIStrokeKey = Instance.new("UIStroke")
+UIStrokeKey.Color = Color3.fromRGB(240, 240, 240)
+UIStrokeKey.Thickness = 2
+UIStrokeKey.Parent = KeyFrame
+
+local KeyTitle = Instance.new("TextLabel")
+KeyTitle.Size = UDim2.new(1, 0, 0, 40)
+KeyTitle.Position = UDim2.new(0, 0, 0, 10)
+KeyTitle.BackgroundTransparency = 1
+KeyTitle.Text = "🐼 Key System - แพนแพน Hub 🐼"
+KeyTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+KeyTitle.TextSize = 16
+KeyTitle.Font = Enum.Font.FredokaOne
+KeyTitle.Parent = KeyFrame
+
+local KeyTextBox = Instance.new("TextBox")
+KeyTextBox.Size = UDim2.new(0.85, 0, 0, 40)
+KeyTextBox.Position = UDim2.new(0.075, 0, 0, 60)
+KeyTextBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+KeyTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+KeyTextBox.PlaceholderText = "กรุณาใส่ Key ที่นี่..."
+KeyTextBox.PlaceholderColor3 = Color3.fromRGB(140, 140, 140)
+KeyTextBox.Text = ""
+KeyTextBox.TextSize = 14
+KeyTextBox.Font = Enum.Font.SourceSansBold
+KeyTextBox.Parent = KeyFrame
+
+local UICornerInput = Instance.new("UICorner")
+UICornerInput.CornerRadius = UDim.new(0, 10)
+UICornerInput.Parent = KeyTextBox
+
+local CheckKeyBtn = Instance.new("TextButton")
+CheckKeyBtn.Size = UDim2.new(0.4, 0, 0, 40)
+CheckKeyBtn.Position = UDim2.new(0.075, 0, 0, 115)
+CheckKeyBtn.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+CheckKeyBtn.TextColor3 = Color3.fromRGB(15, 15, 15)
+CheckKeyBtn.Text = "ยืนยัน Key"
+CheckKeyBtn.TextSize = 14
+CheckKeyBtn.Font = Enum.Font.SourceSansBold
+CheckKeyBtn.Parent = KeyFrame
+
+local UICornerCheck = Instance.new("UICorner")
+UICornerCheck.CornerRadius = UDim.new(0, 10)
+UICornerCheck.Parent = CheckKeyBtn
+
+local GetKeyBtn = Instance.new("TextButton")
+GetKeyBtn.Size = UDim2.new(0.4, 0, 0, 40)
+GetKeyBtn.Position = UDim2.new(0.525, 0, 0, 115)
+GetKeyBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+GetKeyBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+GetKeyBtn.Text = "รับ Key"
+GetKeyBtn.TextSize = 14
+GetKeyBtn.Font = Enum.Font.SourceSansBold
+GetKeyBtn.Parent = KeyFrame
+
+local UICornerGet = Instance.new("UICorner")
+UICornerGet.CornerRadius = UDim.new(0, 10)
+UICornerGet.Parent = GetKeyBtn
+
+local KeyStatus = Instance.new("TextLabel")
+KeyStatus.Size = UDim2.new(1, 0, 0, 30)
+KeyStatus.Position = UDim2.new(0, 0, 0, 170)
+KeyStatus.BackgroundTransparency = 1
+KeyStatus.Text = "🎵 Playing: Falling Tears - Slowed"
+KeyStatus.TextColor3 = Color3.fromRGB(180, 180, 180)
+KeyStatus.TextSize = 12
+KeyStatus.Font = Enum.Font.SourceSans
+KeyStatus.Parent = KeyFrame
+
+-- Quiz Frame
+local QuizFrame = Instance.new("Frame")
+QuizFrame.Name = "QuizFrame"
+QuizFrame.Size = UDim2.new(0, 320, 0, 260)
+QuizFrame.Position = UDim2.new(0.5, -160, 0.5, -130)
+QuizFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+QuizFrame.Active = true
+QuizFrame.Draggable = true
+QuizFrame.Visible = false
+QuizFrame.Parent = ScreenGui
+
+local UICornerQuiz = Instance.new("UICorner")
+UICornerQuiz.CornerRadius = UDim.new(0, 16)
+UICornerQuiz.Parent = QuizFrame
+
+local UIStrokeQuiz = Instance.new("UIStroke")
+UIStrokeQuiz.Color = Color3.fromRGB(240, 240, 240)
+UIStrokeQuiz.Thickness = 2
+UIStrokeQuiz.Parent = QuizFrame
+
+local QuizTitle = Instance.new("TextLabel")
+QuizTitle.Size = UDim2.new(1, 0, 0, 30)
+QuizTitle.Position = UDim2.new(0, 0, 0, 8)
+QuizTitle.BackgroundTransparency = 1
+QuizTitle.Text = "❓ ตอบคำถามเพื่อรับ Key ❓"
+QuizTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+QuizTitle.TextSize = 15
+QuizTitle.Font = Enum.Font.FredokaOne
+QuizTitle.Parent = QuizFrame
+
+local QuestionLabel = Instance.new("TextLabel")
+QuestionLabel.Size = UDim2.new(0.9, 0, 0, 25)
+QuestionLabel.Position = UDim2.new(0.05, 0, 0, 38)
+QuestionLabel.BackgroundTransparency = 1
+QuestionLabel.Text = "คำถาม: แพนๆๆมีกี่ขา?"
+QuestionLabel.TextColor3 = Color3.fromRGB(255, 220, 100)
+QuestionLabel.TextSize = 15
+QuestionLabel.Font = Enum.Font.SourceSansBold
+QuestionLabel.Parent = QuizFrame
+
+local QuizStatus = Instance.new("TextLabel")
+QuizStatus.Size = UDim2.new(1, 0, 0, 25)
+QuizStatus.Position = UDim2.new(0, 0, 0, 225)
+QuizStatus.BackgroundTransparency = 1
+QuizStatus.Text = "เลือกตัวเลือกที่ถูกต้องเพื่อรับ Key"
+QuizStatus.TextColor3 = Color3.fromRGB(180, 180, 180)
+QuizStatus.TextSize = 12
+QuizStatus.Font = Enum.Font.SourceSans
+QuizStatus.Parent = QuizFrame
+
+local Choices = {
+    {Text = "ก. 2 ขา", IsCorrect = false, Pos = UDim2.new(0.075, 0, 0, 70)},
+    {Text = "ข. 4 ขา", IsCorrect = false, Pos = UDim2.new(0.525, 0, 0, 70)},
+    {Text = "ค. 12 ขา", IsCorrect = true,  Pos = UDim2.new(0.075, 0, 0, 115)},
+    {Text = "ง. 24 ขา", IsCorrect = false, Pos = UDim2.new(0.525, 0, 0, 115)}
+}
+
+for _, choice in ipairs(Choices) do
+    local ChoiceBtn = Instance.new("TextButton")
+    ChoiceBtn.Size = UDim2.new(0.4, 0, 0, 38)
+    ChoiceBtn.Position = choice.Pos
+    ChoiceBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    ChoiceBtn.TextColor3 = Color3.fromRGB(230, 230, 230)
+    ChoiceBtn.Text = choice.Text
+    ChoiceBtn.TextSize = 14
+    ChoiceBtn.Font = Enum.Font.SourceSansBold
+    ChoiceBtn.Parent = QuizFrame
+
+    local UICornerChoice = Instance.new("UICorner")
+    UICornerChoice.CornerRadius = UDim.new(0, 8)
+    UICornerChoice.Parent = ChoiceBtn
+
+    ChoiceBtn.MouseButton1Click:Connect(function()
+        if choice.IsCorrect then
+            QuizStatus.Text = "ถูกต้อง! กำลังกรอก Key ให้อัตโนมัติ..."
+            QuizStatus.TextColor3 = Color3.fromRGB(100, 255, 100)
+            task.wait(1)
+            KeyTextBox.Text = Settings.CorrectKey
+            QuizFrame.Visible = false
+            KeyFrame.Visible = true
+            KeyStatus.Text = "ได้รับ Key เรียบร้อย! กด 'ยืนยัน Key' ได้เลย"
+            KeyStatus.TextColor3 = Color3.fromRGB(255, 220, 100)
+        else
+            QuizStatus.Text = "ตอบผิด! ลองเลือกใหม่อีกครั้ง"
+            QuizStatus.TextColor3 = Color3.fromRGB(255, 100, 100)
+        end
+    end)
+end
+
+local BackBtn = Instance.new("TextButton")
+BackBtn.Size = UDim2.new(0.85, 0, 0, 35)
+BackBtn.Position = UDim2.new(0.075, 0, 0, 180)
+BackBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+BackBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+BackBtn.Text = "ย้อนกลับ"
+BackBtn.TextSize = 14
+BackBtn.Font = Enum.Font.SourceSansBold
+BackBtn.Parent = QuizFrame
+
+BackBtn.MouseButton1Click:Connect(function()
+    QuizFrame.Visible = false
+    KeyFrame.Visible = true
+end)
+
+-- ==========================================================
+-- 4. MAIN HUB UI WITH TABS
+-- ==========================================================
+
+local OpenBtn = Instance.new("ImageButton")
+OpenBtn.Size = UDim2.new(0, 55, 0, 55)
+OpenBtn.Position = UDim2.new(0, 15, 0.4, 0)
+OpenBtn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+OpenBtn.Image = PanPanImageId
+OpenBtn.Active = true
+OpenBtn.Draggable = true
+OpenBtn.Visible = false
+OpenBtn.Parent = ScreenGui
+
+local UICornerBtn = Instance.new("UICorner")
+UICornerBtn.CornerRadius = UDim.new(1, 0)
+UICornerBtn.Parent = OpenBtn
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 320, 0, 420)
+MainFrame.Position = UDim2.new(0.5, -160, 0.5, -210)
+MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+MainFrame.Visible = false
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+local UICornerFrame = Instance.new("UICorner")
+UICornerFrame.CornerRadius = UDim.new(0, 16)
+UICornerFrame.Parent = MainFrame
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.Position = UDim2.new(0, 0, 0, 10)
+Title.BackgroundTransparency = 1
+Title.Text = "🐼 แพนแพน Hub 🐼"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 18
+Title.Font = Enum.Font.FredokaOne
+Title.Parent = MainFrame
+
+local TabNavFrame = Instance.new("Frame")
+TabNavFrame.Size = UDim2.new(0.92, 0, 0, 35)
+TabNavFrame.Position = UDim2.new(0.04, 0, 0, 48)
+TabNavFrame.BackgroundTransparency = 1
+TabNavFrame.Parent = MainFrame
+
+local TabButtons = {}
+local TabFrames = {}
+local Categories = {"Main", "Player", "Visual", "Relax", "Game"}
+
+local function SwitchTab(selectedCategory)
+    for name, frame in pairs(TabFrames) do
+        frame.Visible = (name == selectedCategory)
+    end
+    for name, btn in pairs(TabButtons) do
+        if name == selectedCategory then
+            btn.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+            btn.TextColor3 = Color3.fromRGB(15, 15, 15)
+        else
+            btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+            btn.TextColor3 = Color3.fromRGB(180, 180, 180)
+        end
+    end
+end
+
+for i, catName in ipairs(Categories) do
+    local TabBtn = Instance.new("TextButton")
+    TabBtn.Size = UDim2.new(0.18, 0, 1, 0)
+    TabBtn.Position = UDim2.new((i - 1) * 0.205, 0, 0, 0)
+    TabBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    TabBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
+    TabBtn.Text = catName
+    TabBtn.TextSize = 11
+    TabBtn.Font = Enum.Font.SourceSansBold
+    TabBtn.Parent = TabNavFrame
+
+    local UICornerTab = Instance.new("UICorner")
+    UICornerTab.CornerRadius = UDim.new(0, 6)
+    UICornerTab.Parent = TabBtn
+
+    local ContentFrame = Instance.new("Frame")
+    ContentFrame.Name = catName .. "Frame"
+    ContentFrame.Size = UDim2.new(0.9, 0, 0, 310)
+    ContentFrame.Position = UDim2.new(0.05, 0, 0, 92)
+    ContentFrame.BackgroundTransparency = 1
+    ContentFrame.Visible = false
+    ContentFrame.Parent = MainFrame
+
+    TabButtons[catName] = TabBtn
+    TabFrames[catName] = ContentFrame
+
+    TabBtn.MouseButton1Click:Connect(function()
+        SwitchTab(catName)
+    end)
+end
+
+local function CreateToggleButton(parentFrame, text, posY, callback)
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(1, 0, 0, 40)
+    Btn.Position = UDim2.new(0, 0, 0, posY)
+    Btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    Btn.TextColor3 = Color3.fromRGB(180, 180, 180)
+    Btn.Text = text .. ": OFF"
+    Btn.TextSize = 14
+    Btn.Font = Enum.Font.SourceSansBold
+    Btn.Parent = parentFrame
+
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 10)
+    Corner.Parent = Btn
+
+    local state = false
+    Btn.MouseButton1Click:Connect(function()
+        state = not state
+        if state then
+            Btn.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+            Btn.TextColor3 = Color3.fromRGB(15, 15, 15)
+            Btn.Text = text .. ": ON"
+        else
+            Btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+            Btn.TextColor3 = Color3.fromRGB(180, 180, 180)
+            Btn.Text = text .. ": OFF"
+        end
+        callback(state)
+    end)
+    return Btn
+end
+
+OpenBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+
+-- ==========================================================
+-- 5. CONTENT IMPLEMENTATION BY CATEGORY
+-- ==========================================================
+
+-- [ Main ]
+CreateToggleButton(TabFrames["Main"], "Silent Aim", 0, function(state) Settings.SilentAim = state end)
+CreateToggleButton(TabFrames["Main"], "Hitbox Head", 50, function(state) Settings.HitboxHead = state end)
+
+-- [ Player ]
+CreateToggleButton(TabFrames["Player"], "Speed Boost", 10, function(state)
+    Settings.SpeedBoost = state
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("Humanoid") then
+        char.Humanoid.WalkSpeed = state and Settings.FastSpeed or Settings.NormalSpeed
+    end
+end)
+CreateToggleButton(TabFrames["Player"], "Noclip", 60, function(state) Settings.Noclip = state end)
+
+-- [ Visual ]
+CreateToggleButton(TabFrames["Visual"], "ESP Box", 10, function(state) Settings.ESP = state end)
+
+-- [ Relax ]
+CreateToggleButton(TabFrames["Relax"], "🎵 Chill Lofi Music", 10, function(state)
+    if state then ChillMusic:Play() else ChillMusic:Stop() end
+end)
+CreateToggleButton(TabFrames["Relax"], "🌙 Night Atmosphere", 60, function(state)
+    Lighting.ClockTime = state and 0 or (DefaultLighting.ClockTime or 14)
+end)
+
+-- ==========================================================
+-- [ Game Tab: RPS + VEHICLE SYSTEM ]
+-- ==========================================================
+
+local GameFrame = TabFrames["Game"]
+
+-- RPS Mini Game
+local ScoreLabel = Instance.new("TextLabel")
+ScoreLabel.Size = UDim2.new(1, 0, 0, 20)
+ScoreLabel.Position = UDim2.new(0, 0, 0, 0)
+ScoreLabel.BackgroundTransparency = 1
+ScoreLabel.Text = "คะแนน: คุณ 0 - 0 AI"
+ScoreLabel.TextColor3 = Color3.fromRGB(255, 220, 100)
+ScoreLabel.TextSize = 13
+ScoreLabel.Font = Enum.Font.SourceSansBold
+ScoreLabel.Parent = GameFrame
+
+local RPSChoices = {
+    {Name = "Rock", Icon = "✊ ค้อน", Pos = UDim2.new(0, 0, 0, 25)},
+    {Name = "Scissors", Icon = "✌️ กรรไกร", Pos = UDim2.new(0.35, 0, 0, 25)},
+    {Name = "Paper", Icon = "🖐️ กระดาษ", Pos = UDim2.new(0.7, 0, 0, 25)}
+}
+
+local function PlayRPS(playerChoice)
+    local choices = {"Rock", "Scissors", "Paper"}
+    local aiChoice = choices[math.random(1, #choices)]
+    if playerChoice == aiChoice then
+        ScoreLabel.Text = "เสมอ! (AI ออก " .. aiChoice .. ")"
+    elseif (playerChoice == "Rock" and aiChoice == "Scissors") or
+           (playerChoice == "Scissors" and aiChoice == "Paper") or
+           (playerChoice == "Paper" and aiChoice == "Rock") then
+        Settings.PlayerScore = Settings.PlayerScore + 1
+        ScoreLabel.Text = "คุณชนะ! 🎉 คะแนน: " .. Settings.PlayerScore .. " - " .. Settings.AIScore
+    else
+        Settings.AIScore = Settings.AIScore + 1
+        ScoreLabel.Text = "คุณแพ้! ❌ คะแนน: " .. Settings.PlayerScore .. " - " .. Settings.AIScore
+    end
+end
+
+for _, rps in ipairs(RPSChoices) do
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(0.28, 0, 0, 35)
+    Btn.Position = rps.Pos
+    Btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    Btn.TextColor3 = Color3.fromRGB(240, 240, 240)
+    Btn.Text = rps.Icon
+    Btn.TextSize = 12
+    Btn.Font = Enum.Font.SourceSansBold
+    Btn.Parent = GameFrame
+
+    local UICornerRPS = Instance.new("UICorner")
+    UICornerRPS.CornerRadius = UDim.new(0, 6)
+    UICornerRPS.Parent = Btn
+
+    Btn.MouseButton1Click:Connect(function() PlayRPS(rps.Name) end)
+end
+
+-- 🚗 ระบบขับรถ (Vehicle System)
+local VehicleLabel = Instance.new("TextLabel")
+VehicleLabel.Size = UDim2.new(1, 0, 0, 20)
+VehicleLabel.Position = UDim2.new(0, 0, 0, 80)
+VehicleLabel.BackgroundTransparency = 1
+VehicleLabel.Text = "🚗 ระบบยานพาหนะ (Vehicle System)"
+VehicleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+VehicleLabel.TextSize = 14
+VehicleLabel.Font = Enum.Font.SourceSansBold
+VehicleLabel.Parent = GameFrame
+
+local SpawnVehicleBtn = Instance.new("TextButton")
+SpawnVehicleBtn.Size = UDim2.new(0.48, 0, 0, 40)
+SpawnVehicleBtn.Position = UDim2.new(0, 0, 0, 110)
+SpawnVehicleBtn.BackgroundColor3 = Color3.fromRGB(40, 160, 80)
+SpawnVehicleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpawnVehicleBtn.Text = "🚘 เสกรถขับ"
+SpawnVehicleBtn.TextSize = 13
+SpawnVehicleBtn.Font = Enum.Font.SourceSansBold
+SpawnVehicleBtn.Parent = GameFrame
+
+local UICornerSpawn = Instance.new("UICorner")
+UICornerSpawn.CornerRadius = UDim.new(0, 8)
+UICornerSpawn.Parent = SpawnVehicleBtn
+
+local RemoveVehicleBtn = Instance.new("TextButton")
+RemoveVehicleBtn.Size = UDim2.new(0.48, 0, 0, 40)
+RemoveVehicleBtn.Position = UDim2.new(0.52, 0, 0, 110)
+RemoveVehicleBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+RemoveVehicleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+RemoveVehicleBtn.Text = "🗑️ ลบรถ"
+RemoveVehicleBtn.TextSize = 13
+RemoveVehicleBtn.Font = Enum.Font.SourceSansBold
+RemoveVehicleBtn.Parent = GameFrame
+
+local UICornerRemove = Instance.new("UICorner")
+UICornerRemove.CornerRadius = UDim.new(0, 8)
+UICornerRemove.Parent = RemoveVehicleBtn
+
+-- ฟังก์ชันสร้างรถ
+local function CreateVehicle()
+    if Settings.CurrentVehicle then
+        Settings.CurrentVehicle:Destroy()
+    end
+
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+
+    local spawnCFrame = char.HumanoidRootPart.CFrame * CFrame.new(0, 2, -10)
+
+    local model = Instance.new("Model")
+    model.Name = "PanPanVehicle"
+
+    -- ตัวถังรถ
+    local body = Instance.new("Part")
+    body.Name = "Body"
+    body.Size = Vector3.new(6, 1.5, 10)
+    body.CFrame = spawnCFrame
+    body.Color = Color3.fromRGB(30, 30, 30)
+    body.Material = Enum.Material.SmoothPlastic
+    body.Parent = model
+
+    -- เบาะขับรถ
+    local seat = Instance.new("VehicleSeat")
+    seat.Size = Vector3.new(2, 1, 2)
+    seat.CFrame = spawnCFrame * CFrame.new(0, 1, 0)
+    seat.MaxSpeed = 70
+    seat.Torque = 20
+    seat.TurnSpeed = 2
+    seat.Parent = model
+
+    local weld = Instance.new("WeldConstraint")
+    weld.Part0 = body
+    weld.Part1 = seat
+    weld.Parent = body
+
+    model.PrimaryPart = body
+    model.Parent = workspace
+    Settings.CurrentVehicle = model
+
+    -- ย้ายผู้เล่นเข้าเบาะ
+    if char:FindFirstChild("Humanoid") then
+        seat:Sit(char.Humanoid)
+    end
+end
+
+SpawnVehicleBtn.MouseButton1Click:Connect(CreateVehicle)
+
+RemoveVehicleBtn.MouseButton1Click:Connect(function()
+    if Settings.CurrentVehicle then
+        Settings.CurrentVehicle:Destroy()
+        Settings.CurrentVehicle = nil
+    end
+end)
+
+SwitchTab("Main")
+
+-- ==========================================================
+-- 6. KEY CHECK LOGIC & LOOPS
+-- ==========================================================
+
+CheckKeyBtn.MouseButton1Click:Connect(function()
+    if KeyTextBox.Text == Settings.CorrectKey then
+        KeyStatus.Text = "Key ถูกต้อง! กำลังปลดล็อก..."
+        KeyStatus.TextColor3 = Color3.fromRGB(100, 255, 100)
+        if KeyMusic then KeyMusic:Destroy() end
+        task.wait(1)
+        KeyFrame:Destroy()
+        QuizFrame:Destroy()
+        OpenBtn.Visible = true
+        MainFrame.Visible = true
+    end
+end)
+
+GetKeyBtn.MouseButton1Click:Connect(function()
+    KeyFrame.Visible = false
+    QuizFrame.Visible = true
+end)
+
+RunService.Stepped:Connect(function()
+    local char = LocalPlayer.Character
+    if Settings.SpeedBoost and char and char:FindFirstChild("Humanoid") then
+        char.Humanoid.WalkSpeed = Settings.FastSpeed
+    end
+    if Settings.Noclip and char then
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then part.CanCollide = false end
+        end
+    end
+end)
